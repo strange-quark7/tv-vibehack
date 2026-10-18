@@ -1,0 +1,56 @@
+# VisioWorld SW-22AE NF (Skyworth platform, device SW6H, MediaTek), Google TV on Android 11,
+# firmware RTT2.220103.001
+# Stock launcher: com.google.android.apps.tv.launcherx/.home.HomeActivity
+# Live TV app: com.smartdevice.livetv
+#
+# Apply:   TV_HOST=<tv ip> tools/disable.sh examples/visioworld-sw-22ae-nf/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/visioworld-sw-22ae-nf/debloat.txt \
+#              com.google.android.apps.tv.launcherx/.home.HomeActivity
+# Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+#
+# Not in this list: launcher/build-and-install.sh disables the Google TV launcher and the setup
+# wizard (com.google.android.tungsten.setupwraith, which otherwise keeps taking Home); restore.sh
+# re-enables both.
+#
+# Keep: com.smartdevice.bleconnectservice (remote pairing and battery), com.smartdevice.livetv and
+# com.mediatek.tvinput (HDMI/AV/tuner inputs).
+
+# Manufacturer telemetry and after-sale service
+com.smartdevice.aftersale                  # Skyworth after-sale reporting, boots with network listener
+com.google.android.feedback
+com.google.android.apps.nbu.smartconnect.tv # Google data meter / VPN helper, runs on every boot
+
+# Manufacturer content and ad services
+com.smartdevice.recommendation             # DailyPlay: recommendation channels, coocaa data SDK
+com.smartdevice.dailyshortcut              # DailyHub / Art Time, Firebase push
+com.smartdevice.leanbacklauncher.customizer # injects partner rows into the home screen
+com.mediatek.android.leanbacklauncher.partnercustomizer
+android.autoinstalls.config.google.gtvpai  # Play auto-installs sponsored apps
+com.google.android.apps.tv.dreamx          # Google TV ambient mode with recommendations
+
+# Background services and demo players
+com.smartdevice.dailymanage
+com.smartdevice.epopplayer                 # in-store promo player
+com.coocaa.demonow.lightining              # in-store demo
+fusion.android.tv.demo                     # retail display mode
+
+# ---- Owner's choices (kept: Netflix, Prime Video, YouTube, YouTube Music, Apple TV, JioHotstar,
+# SonyLIV, ZEE5, Crunchyroll, Dropout, Google Assistant). Comment out anything you start using.
+
+# Streaming apps not used
+com.jio.media.stb.ondemand                 # JioCinema
+com.spotify.tv.android
+com.discoveryplus.tv.android
+com.google.android.videos                  # Google TV movie store
+com.google.android.play.games
+
+# Casting, not used
+com.google.android.apps.mediashell         # Chromecast built-in
+com.smartdevice.dtv.icast                  # Skyworth iCast (DLNA / AirPlay receiver)
+com.mediatek.androidbox                    # Miracast screen mirroring
+
+# Preloaded apps not used
+com.tianci.localmedia                      # USB media player
+com.smartdevice.duplebluetooth             # dual Bluetooth audio
+com.smartdevice.myapp                      # "Daily Key" app shortcut hub
+com.Smartdevice.emanual

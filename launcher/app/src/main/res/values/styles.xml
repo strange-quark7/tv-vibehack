@@ -3,7 +3,11 @@
     <style name="Theme.TvHome" parent="android:Theme.Material.NoActionBar.Fullscreen">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
-        <item name="android:windowAnimationStyle">@null</item>
+        <!-- Opaque for the window manager too: without these this TV treats the home screen as
+             translucent and keeps the last app drawn on top of it after Home. -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowSwipeToDismiss">false</item>
     </style>
 
     <!-- Frosted pill, tvOS style. -->

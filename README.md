@@ -32,6 +32,7 @@ step with screenshots from the TV. If you'd rather do it by hand, the pieces are
 | [`launcher/`](launcher/) | The tvOS-style launcher. Edit `app/src/main/res/values/config.xml` for your dock, hidden apps and Live TV package, then run `build-and-install.sh`. |
 | [`tools/tv.py`](tools/tv.py) | Pure-Python ADB client (shell, batch, push, pull). Works where the stock `adb` is blocked. |
 | [`tools/b64push.py`](tools/b64push.py) | Uploads larger files (APKs) as base64 chunks with an md5 check. |
+| [`tools/screenshot.py`](tools/screenshot.py) | Presses remote keys, then saves a screenshot from the TV. |
 | [`tools/disable.sh`](tools/disable.sh), [`tools/restore.sh`](tools/restore.sh) | Apply or undo a debloat list. |
 | [`examples/`](examples/) | Per-TV debloat lists. Add yours, see [CONTRIBUTING.md](CONTRIBUTING.md). |
 
@@ -52,7 +53,9 @@ A small native Android TV home screen (`com.gathin.tvhome`), built for sets with
   No blur, no video, no network, no background services.
 
 Configure it in [`launcher/app/src/main/res/values/config.xml`](launcher/app/src/main/res/values/config.xml):
-dock order, hidden apps, Live TV package and columns. Build and install with
+dock order, hidden apps, Live TV package and columns. The background is
+[`res/drawable/wallpaper.xml`](launcher/app/src/main/res/drawable/wallpaper.xml) (black); replace it with
+a `res/drawable-nodpi/wallpaper.jpg` for a picture. Build and install with
 
 ```bash
 TV_HOST=192.168.1.50 launcher/build-and-install.sh
@@ -60,11 +63,14 @@ TV_HOST=192.168.1.50 launcher/build-and-install.sh
 
 Needs JDK 17 and the Android SDK (platform 34, build-tools 34.0.0). On macOS:
 `brew install openjdk@17 android-commandlinetools && sdkmanager "platforms;android-34" "build-tools;34.0.0"`.
+On Windows the script runs in Git Bash and looks for both under `%LOCALAPPDATA%\tvhome-build\`
+(`jdk17` and `sdk`); see [`examples/visioworld-sw-22ae-nf/README.md`](examples/visioworld-sw-22ae-nf/README.md).
+Google TV sets need `STOCK_LAUNCHER=com.google.android.apps.tv.launcherx`.
 
 ## Talking to the TV by hand
 
 ```bash
-python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt
+python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt   # Windows: tools/venv/Scripts/
 export TV_HOST=192.168.1.50                                   # your TV's IP
 tools/venv/bin/python -I tools/tv.py --probe                 # model, Android version, firmware
 tools/venv/bin/python -I tools/tv.py 'pm list packages'      # one command
@@ -86,6 +92,17 @@ tools/restore.sh examples/xiaomi-mi-tv-4a/debloat.txt        # undo it, restore 
 - **Disable the stock launcher only after the new one is installed**, or the Home button lands on
   a factory test app.
 - **Third-party launchers** often charge for basics like a custom wallpaper. Hence `launcher/`.
+- **Google TV: Home lands on a black screen** after the stock launcher is disabled. The setup
+  wizard (`com.google.android.tungsten.setupwraith`) also claims Home with a priority no installed
+  app can match, so it wins over the preferred home. `build-and-install.sh` disables it (setup is
+  long finished by then) and sets the home again; the restore scripts re-enable it.
+- **The last app stays on screen after Home** (seen on a Skyworth-built Google TV): the window
+  manager treated the launcher as translucent until its theme said `windowIsTranslucent=false`
+  explicitly. Fixed in `launcher/`.
+- **Screenshots repeat an old frame**: `screencap` fails without touching an existing file while a
+  protected HDMI layer is alive. `tools/screenshot.py` deletes first and retries.
+- **Windows / Git Bash**: export `MSYS_NO_PATHCONV=1` before passing TV paths like
+  `/data/local/tmp/...` to the tools, or Git Bash rewrites them into Windows paths.
 - **No on-screen keyboard** after switching launchers (seen on Xiaomi): the default input method
   pointed at a Baidu IME that isn't installed. Fix with
   `tools/tv.py 'ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME'`.

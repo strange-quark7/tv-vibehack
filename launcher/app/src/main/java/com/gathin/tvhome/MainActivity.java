@@ -43,7 +43,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * tvOS style home: black, a pinned dock row, an app grid, and one glass highlight that springs between tiles.
@@ -69,6 +71,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private SpringAnimation springX, springY;
     private float glassTargetX, glassTargetY;
     private boolean glassShown;
+    private static final String PREF_LAST_FOCUSED = "last_focused";
     private int lastFocused = 0;
     private float density;
 
@@ -89,6 +92,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         density = getResources().getDisplayMetrics().density;
         COLUMNS = Math.max(1, getResources().getInteger(R.integer.columns));
         liveTvPkg = getString(R.string.live_tv_package).trim();
+        lastFocused = getPreferences(MODE_PRIVATE).getInt(PREF_LAST_FOCUSED, 0);
 
         root = findViewById(R.id.root);
         glass = findViewById(R.id.glass);
@@ -192,6 +196,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(minuteTick);
+        // With 1 GB of RAM the launcher is often killed while an app runs; keep the tile across that.
+        getPreferences(MODE_PRIVATE).edit().putInt(PREF_LAST_FOCUSED, lastFocused).apply();
     }
 
     @Override
@@ -404,8 +410,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         boolean sawNonHdmi = false;
+        boolean namedDevice = false;
         if (tim != null) {
             List<TvInputInfo> inputs = new ArrayList<>(tim.getTvInputList());
+            // HDMI-CEC devices show up as child inputs of their port (often with no label). Fold them
+            // into the port: it reads as connected, with the device name when the TV provides one.
+            Map<String, String> cecChild = new HashMap<>();
+            for (TvInputInfo info : inputs) {
+                if (info.getParentId() == null) continue;
+                CharSequence l = info.loadLabel(this);
+                cecChild.put(info.getParentId(), l == null ? "" : l.toString().trim());
+            }
             // HDMI ports first in port order, then AV and the rest.
             Collections.sort(inputs, (a, b) -> {
                 boolean ha = a.getType() == TvInputInfo.TYPE_HDMI, hb = b.getType() == TvInputInfo.TYPE_HDMI;
@@ -413,16 +428,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 return String.valueOf(a.loadLabel(this)).compareToIgnoreCase(String.valueOf(b.loadLabel(this)));
             });
             for (TvInputInfo info : inputs) {
-                if (!info.isPassthroughInput()) continue;
+                if (!info.isPassthroughInput() || info.getParentId() != null) continue;
                 CharSequence l = info.loadLabel(this);
                 String label = l == null ? info.getId() : l.toString();
                 boolean hdmi = info.getType() == TvInputInfo.TYPE_HDMI;
                 if (hdmi && !label.toUpperCase().contains("HDMI")) label = "HDMI " + label;
                 final String id = info.getId();
                 int state = tim.getInputState(id);
+                String device = cecChild.get(id);
+                if (device != null) state = TvInputManager.INPUT_STATE_CONNECTED;
+                if (device != null && !device.isEmpty()) namedDevice = true;
                 if (!hdmi && rows.getChildCount() > 0 && !sawNonHdmi) addSeparator(rows);
                 if (!hdmi) sawNonHdmi = true;
-                addInputRow(rows, popup, hdmi ? R.drawable.ic_input : R.drawable.ic_av, label, state,
+                addInputRow(rows, popup, hdmi ? R.drawable.ic_input : R.drawable.ic_av, label,
+                        device == null || device.isEmpty() ? null : device, state,
                         () -> open(new Intent(Intent.ACTION_VIEW).setDataAndType(
                                 TvContract.buildChannelUriForPassthroughInput(id), "vnd.android.cursor.item/channel")));
             }
@@ -430,8 +449,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Intent liveTv = liveTvPkg.isEmpty() ? null : getPackageManager().getLeanbackLaunchIntentForPackage(liveTvPkg);
         if (liveTv != null) {
             if (rows.getChildCount() > 0) addSeparator(rows);
-            addInputRow(rows, popup, R.drawable.ic_livetv, getString(R.string.live_tv), -1, () -> open(liveTv));
+            addInputRow(rows, popup, R.drawable.ic_livetv, getString(R.string.live_tv), null, -1, () -> open(liveTv));
         }
+        // A device name next to a port ("HDMI 2  <device name>") needs a wider panel.
+        if (namedDevice) popup.setWidth(Math.max(width, (int) (230 * density)));
         if (rows.getChildCount() == 0) {
             Toast.makeText(this, R.string.no_inputs, Toast.LENGTH_SHORT).show();
             return;
@@ -457,7 +478,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         rows.addView(line, lp);
     }
 
-    private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
+    /** @param device name of the CEC device on this port, shown instead of "Connected"; may be null. */
+    private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, String device,
+                             int state, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
         ((TextView) row.findViewById(R.id.title)).setText(title);
@@ -466,7 +489,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // This TV reports "standby" for every port whether or not something is plugged in, so only
         // definite states are shown.
         if (state == TvInputManager.INPUT_STATE_CONNECTED) {
-            status.setText(R.string.connected);
+            if (device != null) status.setText(device);
+            else status.setText(R.string.connected);
             dot.setVisibility(View.VISIBLE);
         } else if (state == TvInputManager.INPUT_STATE_DISCONNECTED) {
             status.setText(R.string.not_connected);

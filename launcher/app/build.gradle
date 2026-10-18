@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId 'com.gathin.tvhome'
-        minSdk 26
-        targetSdk 29
+        minSdk 30   // Android 11, matches the VisioWorld SW-22AE NF
+        targetSdk 30
         versionCode 2
         versionName '2.0'
     }

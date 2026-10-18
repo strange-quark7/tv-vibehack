@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home screen background. Pitch black by default. To use a picture instead, delete this file and
+     put a 1920x1080 JPEG at res/drawable-nodpi/wallpaper.jpg, then rebuild (see README). -->
+<color xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FF000000" />
