@@ -1,7 +1,7 @@
 # tv-vibehack
 
 **Your TV, minus the ads.** Debloat any Android TV / Google TV over ADB and give it a clean,
-tvOS-inspired launcher. Hand the prompt to Claude Code or any coding assistant, answer a few
+minimalist launcher. Hand the prompt to Claude Code or any coding assistant, answer a few
 questions about which apps you use, and it does the rest on the real TV.
 
 | Stock home screen | After |
